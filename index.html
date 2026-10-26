@@ -630,9 +630,60 @@ h3.sub-title {
   border-radius: var(--r-md); margin-bottom: var(--sp-5); color: var(--text-bright); font-size: var(--fs-sm);
 }
 
+
+/* Drag and drop build */
+.diagram.build .wall { width: 64px; flex-direction: column; gap: var(--sp-2); }
+.diagram.build .wall.drop { min-height: 180px; }
+.wall-fixed, .wall-empty { font-family: var(--font-mono); font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .1em; }
+.wall-empty { color: var(--text-dim); }
+.zone.drop, .wall.drop, .tray { transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
+body.is-dragging .zone.drop, body.is-dragging .wall.drop, body.is-dragging .tray { border-style: dashed; }
+.drop-over { border-color: var(--primary) !important; border-style: solid !important; background: var(--primary-soft) !important; }
+.token {
+  min-height: 44px; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); cursor: grab; text-align: left;
+  background: var(--surface-1); border: 1px solid var(--line-strong); color: var(--text-bright);
+  font-family: var(--font-body); font-size: var(--fs-sm); font-weight: 600; line-height: 1.35;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.token::before { content: '⠿ '; color: var(--text-dim); font-family: var(--font-mono); }
+.token:hover { border-color: var(--primary); background: var(--surface-2); }
+.token[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); box-shadow: inset 0 0 0 1px var(--primary); }
+.token[aria-pressed="true"]::after { content: ' · SELECTED'; font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--primary); }
+.token.dragging { opacity: .35; }
+.tok-fw, .tok-strict { font-family: var(--font-mono); font-size: var(--fs-2xs); letter-spacing: .08em; font-weight: 700; }
+.tok-fw { border: 2px solid var(--primary); color: var(--primary); background: var(--primary-soft); }
+.tok-strict { border: 2px solid var(--u4); color: var(--u4); background: var(--u4s); }
+.tok-opt { border-color: var(--u3); background: var(--u3s); }
+.token.ghost {
+  position: fixed; z-index: var(--z-toast); pointer-events: none; transform: translate(-50%, -60%) rotate(-2deg);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--bg) 70%, transparent); cursor: grabbing; writing-mode: horizontal-tb;
+}
+.slot {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: 52px; cursor: pointer;
+  padding: var(--sp-2) var(--sp-3); border: 2px dashed var(--u3); border-radius: var(--r-sm); background: var(--u3s);
+  color: var(--text-bright); font-family: var(--font-body); font-size: var(--fs-sm); font-weight: 650; text-align: left;
+}
+.slot-k { font-family: var(--font-mono); font-size: var(--fs-2xs); letter-spacing: .1em; color: var(--u3); font-weight: 700; }
+.slot.ready { border-style: solid; border-color: var(--primary); }
+.place-btn {
+  min-height: 44px; padding: var(--sp-1) var(--sp-3); border-radius: var(--r-sm); cursor: pointer;
+  background: var(--primary); border: 1px solid var(--primary); color: var(--bg);
+  font-family: var(--font-mono); font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+}
+.zone .place-btn { margin-top: auto; }
+.tray { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-3); padding: var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-1); }
+.tray:empty { display: none; }
+.tray-sec { display: flex; flex-direction: column; gap: var(--sp-2); }
+.tray-legend { font-size: var(--fs-sm); color: var(--text-2); }
+.tray-none { font-size: var(--fs-sm); }
+.tray > .place-btn { grid-column: 1 / -1; justify-self: start; }
+
 @media (max-width: 820px) {
   .diagram { flex-direction: column; overflow-x: visible; }
   .wall { width: auto; writing-mode: horizontal-tb; transform: none; min-height: 36px; }
+  .diagram.build .wall { width: auto; flex-direction: row; flex-wrap: wrap; padding: var(--sp-2); }
+  .diagram.build .wall.drop { min-height: 60px; }
   .zone { min-width: 0; }
   .log-line { grid-template-columns: 56px minmax(0, 1fr); }
   h1.page-title { font-size: var(--fs-xl); }
@@ -782,11 +833,13 @@ h3.sub-title {
 
       <div id="step-build" class="hidden">
         <div class="panel full-col">
-          <div class="panel-hdr"><h2 class="panel-title">Build</h2><span class="mono-label">The diagram updates as you change settings</span></div>
+          <div class="panel-hdr"><h2 class="panel-title">Build</h2><span class="mono-label">Drag and drop</span></div>
           <div class="panel-body stack">
             <p class="muted" id="build-goal"></p>
             <div id="build-diagram"></div>
-            <div class="ctl-grid" id="build-ctls"></div>
+            <p class="tray-legend">Drag pieces onto the diagram. On a phone or with a keyboard, tap a piece to select it, then tap <strong>Place here</strong>.</p>
+            <div id="build-tray" aria-label="Pieces to place"></div>
+            <p class="msg ok" id="build-msg" role="status" aria-live="polite"></p>
             <div class="row">
               <button class="btn" type="button" id="run-btn">Run simulation</button>
               <button class="btn btn-ghost" type="button" id="hint-btn">Hint</button>
@@ -1032,7 +1085,7 @@ function diagramSummary(d) {
   }).join('. ') + '.';
 }
 function itemsIn(lv, cfg, z, mark) {
-  return lv.assets.filter(a => cfg.zone[a.id] === z).map(a => ({ name: a.name, cls: mark ? (mark[a.id] || '') : '' }));
+  return lv.assets.filter(a => cfg.zone[a.id] === z).map(a => ({ id: a.id, name: a.name, cls: mark ? (mark[a.id] || '') : '' }));
 }
 
 // ══════════════════════════════════════════
@@ -1103,16 +1156,17 @@ const LEVELS = [
   ],
   choices: [], fixedZone: { web: 'dmz', mail: 'dmz', payroll: 'lan', laptops: 'lan' },
   controls: [
-    { id: 'dmzLvl', label: 'Screened subnet security level', type: 'select', options: [['low', 'Lower security: public services reachable from the internet'], ['high', 'Higher security: strict rules, no inbound internet traffic']] },
-    { id: 'lanLvl', label: 'Internal LAN security level', type: 'select', options: [['low', 'Lower security: accepts traffic from the screened subnet'], ['high', 'Higher security: strict rules, blocks traffic from the screened subnet']] }
+    { id: 'dmzLvl', label: 'Screened subnet security level', type: 'slot', group: 'lvl', tray: 'Security level labels', options: [['low', 'Lower security'], ['high', 'Higher security']],
+      legend: 'Lower security: accepts public traffic from outside. Higher security: strict rules that block inbound traffic from the zone in front of it.' },
+    { id: 'lanLvl', label: 'Internal LAN security level', type: 'slot', group: 'lvl', options: [['low', 'Lower security'], ['high', 'Higher security']] }
   ],
   start: { zone: {}, ctl: { dmzLvl: 'high', lanLvl: 'low' } },
   diagram(cfg, mark) {
     const lv = v => v === 'high' ? 'Higher security' : 'Lower security';
     return { cols: [
       { z: 'internet', items: [{ name: 'Customers' }] },
-      { z: 'dmz', lvl: lv(cfg.ctl.dmzLvl), items: itemsIn(this, cfg, 'dmz', mark) },
-      { z: 'lan', lvl: lv(cfg.ctl.lanLvl), items: itemsIn(this, cfg, 'lan', mark) }
+      { z: 'dmz', lvl: lv(cfg.ctl.dmzLvl), slot: 'dmzLvl', items: itemsIn(this, cfg, 'dmz', mark) },
+      { z: 'lan', lvl: lv(cfg.ctl.lanLvl), slot: 'lanLvl', items: itemsIn(this, cfg, 'lan', mark) }
     ], walls: [{ on: true, strict: cfg.ctl.dmzLvl === 'high', label: 'EDGE FIREWALL' }, { on: true, strict: cfg.ctl.lanLvl === 'high', label: 'INNER FIREWALL' }] };
   },
   watch: [
@@ -1216,7 +1270,7 @@ const LEVELS = [
   controls: [
     { id: 'edge', label: 'Edge firewall (internet ↔ screened subnet)', type: 'toggle' },
     { id: 'inner', label: 'Inner firewall (screened subnet ↔ internal LAN)', type: 'toggle' },
-    { id: 'strict', label: 'Which firewall gets the stricter rules?', type: 'select', options: [['same', 'Both use the same rules'], ['edge', 'Edge firewall is stricter'], ['inner', 'Inner firewall is stricter']] }
+    { id: 'strict', label: 'Stricter rules tag', type: 'tag' }
   ],
   start: { zone: {}, ctl: { edge: true, inner: false, strict: 'same' } },
   diagram(cfg, mark) {
@@ -1226,14 +1280,14 @@ const LEVELS = [
       { z: 'dmz', lvl: c.inner ? 'Lower security' : 'No wall behind it', items: itemsIn(this, cfg, 'dmz', mark) },
       { z: 'lan', lvl: 'Higher security', items: itemsIn(this, cfg, 'lan', mark) }
     ], walls: [
-      { on: c.edge, strict: c.edge && c.strict === 'edge', label: c.edge ? 'EDGE FIREWALL' + (c.strict === 'edge' ? ' · STRICT' : '') : 'NO FIREWALL' },
-      { on: c.inner, strict: c.inner && c.strict === 'inner', label: c.inner ? 'INNER FIREWALL' + (c.strict === 'inner' ? ' · STRICT' : '') : 'NO FIREWALL' }
+      { fw: 'edge', fwName: 'EDGE FIREWALL', on: c.edge, strict: c.edge && c.strict === 'edge', label: c.edge ? 'EDGE FIREWALL' + (c.strict === 'edge' ? ' · STRICT' : '') : 'NO FIREWALL' },
+      { fw: 'inner', fwName: 'INNER FIREWALL', on: c.inner, strict: c.inner && c.strict === 'inner', label: c.inner ? 'INNER FIREWALL' + (c.strict === 'inner' ? ' · STRICT' : '') : 'NO FIREWALL' }
     ] };
   },
   watch: [
     { k: 'Figure 3.3', t: 'A screened subnet is behind a firewall but still reachable from outside. Beyond it is a second firewall that more strictly restricts access to the LAN behind it.' },
     { k: 'Why two', t: 'The edge firewall filters what the internet can reach. The inner firewall keeps a compromised public server from reaching the internal network.' },
-    { k: 'Your job', t: 'Turn on the walls you need and pick which one is stricter. Members still have to reach online banking.' }
+    { k: 'Your job', t: 'Drag a firewall into each gap that needs one, then drag the STRICTER RULES tag onto the right firewall. Members still have to reach online banking.' }
   ],
   run(cfg) {
     const c = cfg.ctl, L = [INFO('Members log in to online banking. An attacker scans from the internet, then compromises the banking site.')];
@@ -1269,7 +1323,7 @@ const LEVELS = [
     { id: 'pcs', name: 'Front desk PCs', pub: false }
   ],
   choices: [], controls: [
-    { id: 'posB', label: 'Where does Firewall B sit?', type: 'select', options: [['pcs', 'In front of the front desk PCs only'], ['servers', 'In front of the file server and the front desk PCs'], ['web', 'In front of the website, file server, and PCs']] }
+    { id: 'posB', label: 'Firewall B', type: 'mover' }
   ],
   start: { zone: {}, ctl: { posB: 'pcs' } },
   zonesFor(cfg) {
@@ -1279,17 +1333,20 @@ const LEVELS = [
     return { web: 'lan', files: 'lan', pcs: 'lan' };
   },
   diagram(cfg, mark) {
-    const z = Object.assign({}, cfg, { zone: this.zonesFor(cfg) });
+    const zs = this.zonesFor(cfg), p = cfg.ctl.posB, m = mark || {};
+    const col = id => { const a = this.assets.find(x => x.id === id); return { z: zs[id], label: zs[id] === 'dmz' ? 'Between the firewalls' : 'Behind Firewall B', items: [{ name: a.name, cls: m[id] || '' }] }; };
     return { cols: [
-      { z: 'internet', items: [{ name: 'Patients' }, { name: 'Attacker' }] },
-      { z: 'dmz', label: 'Between the firewalls', items: itemsIn(this, z, 'dmz', mark) },
-      { z: 'lan', label: 'Behind Firewall B', items: itemsIn(this, z, 'lan', mark) }
-    ], walls: [{ on: true, label: 'FIREWALL A' }, { on: true, strict: true, label: 'FIREWALL B · STRICT' }] };
+      { z: 'internet', items: [{ name: 'Patients' }, { name: 'Attacker' }] }, col('web'), col('files'), col('pcs')
+    ], walls: [
+      { pos: 'web', fixed: 'FIREWALL A', on: true, strict: p === 'web', label: p === 'web' ? 'FIREWALL A + B' : 'FIREWALL A' },
+      { pos: 'servers', on: p === 'servers', strict: p === 'servers', label: p === 'servers' ? 'FIREWALL B · STRICT' : 'NO FIREWALL' },
+      { pos: 'pcs', on: p === 'pcs', strict: p === 'pcs', label: p === 'pcs' ? 'FIREWALL B · STRICT' : 'NO FIREWALL' }
+    ] };
   },
   watch: [
     { k: 'Two firewalls isn\'t the goal', t: 'Having two firewalls doesn\'t help if one sits in the wrong place. Each firewall has to sit on the boundary you actually care about.' },
     { k: 'Device roles decide placement', t: 'The appointment website has to be reachable by patients. The X-ray file server holds patient data that only staff should touch.' },
-    { k: 'Your job', t: 'Move Firewall B so the website stays reachable and every internal-only device sits behind the strict wall.' }
+    { k: 'Your job', t: 'Drag Firewall B to a new gap so the website stays reachable and every internal-only device sits behind the strict wall.' }
   ],
   run(cfg) {
     const z = this.zonesFor(cfg), L = [INFO('Patients book appointments. Then an attacker compromises the appointment website.')];
@@ -1329,17 +1386,17 @@ const LEVELS = [
   ],
   choices: ['weapons', 'ops', 'crew'],
   controls: [
-    { id: 'lvlW', label: 'Weapons LAN security level', type: 'select', options: [['highest', 'Highest'], ['high', 'High'], ['lower', 'Lower']] },
-    { id: 'lvlO', label: 'Naval ops LAN security level', type: 'select', options: [['highest', 'Highest'], ['high', 'High'], ['lower', 'Lower']] },
-    { id: 'lvlC', label: 'Crew rec LAN security level', type: 'select', options: [['highest', 'Highest'], ['high', 'High'], ['lower', 'Lower']] }
+    { id: 'lvlW', label: 'Weapons LAN security level', type: 'slot', group: 'sub', tray: 'Security level labels', options: [['highest', 'Highest security'], ['high', 'High security'], ['lower', 'Lower security']] },
+    { id: 'lvlO', label: 'Naval ops LAN security level', type: 'slot', group: 'sub', options: [['highest', 'Highest security'], ['high', 'High security'], ['lower', 'Lower security']] },
+    { id: 'lvlC', label: 'Crew rec LAN security level', type: 'slot', group: 'sub', options: [['highest', 'Highest security'], ['high', 'High security'], ['lower', 'Lower security']] }
   ],
   start: { zone: { fire: 'ops', sonar: 'weapons', plan: 'crew', comms: 'ops', game: 'crew', movies: 'weapons' }, ctl: { lvlW: 'high', lvlO: 'high', lvlC: 'high' } },
   diagram(cfg, mark) {
     const n = { highest: 'Highest security', high: 'High security', lower: 'Lower security' };
     return { cols: [
-      { z: 'weapons', lvl: n[cfg.ctl.lvlW], items: itemsIn(this, cfg, 'weapons', mark) },
-      { z: 'ops', lvl: n[cfg.ctl.lvlO], items: itemsIn(this, cfg, 'ops', mark) },
-      { z: 'crew', lvl: n[cfg.ctl.lvlC], items: itemsIn(this, cfg, 'crew', mark) }
+      { z: 'weapons', lvl: n[cfg.ctl.lvlW], slot: 'lvlW', items: itemsIn(this, cfg, 'weapons', mark) },
+      { z: 'ops', lvl: n[cfg.ctl.lvlO], slot: 'lvlO', items: itemsIn(this, cfg, 'ops', mark) },
+      { z: 'crew', lvl: n[cfg.ctl.lvlC], slot: 'lvlC', items: itemsIn(this, cfg, 'crew', mark) }
     ], walls: [{ on: true, label: 'SEGMENT BOUNDARY' }, { on: true, label: 'SEGMENT BOUNDARY' }] };
   },
   watch: [
@@ -1391,13 +1448,14 @@ const LEVELS = [
   ],
   choices: ['guest', 'lan'],
   controls: [
-    { id: 'guestPol', label: 'Guest Wi-Fi policy', type: 'select', options: [['same', 'Same rules as the internal LAN'], ['internet', 'Lower security: internet access only, no access to the LAN']] }
+    { id: 'guestPol', label: 'Guest Wi-Fi policy', type: 'slot', group: 'gpol', tray: 'Guest policy labels', options: [['same', 'Same rules as LAN'], ['internet', 'Internet only']],
+      legend: 'Same rules as LAN: guests can reach staff systems. Internet only: lower security, guests can browse but can\'t reach the LAN.' }
   ],
   start: { zone: { vlap: 'lan', vphone: 'guest', slap: 'lan', circ: 'lan', patron: 'lan', print: 'guest' }, ctl: { guestPol: 'same' } },
   diagram(cfg, mark) {
     const iso = cfg.ctl.guestPol === 'internet';
     return { cols: [
-      { z: 'guest', lvl: iso ? 'Lower security · internet only' : 'Same rules as LAN', items: itemsIn(this, cfg, 'guest', mark) },
+      { z: 'guest', lvl: iso ? 'Lower security · internet only' : 'Same rules as LAN', slot: 'guestPol', items: itemsIn(this, cfg, 'guest', mark) },
       { z: 'lan', lvl: 'Higher security', items: itemsIn(this, cfg, 'lan', mark) }
     ], walls: [{ on: iso, strict: iso, label: iso ? 'FIREWALL · STRICT' : 'NO REAL BOUNDARY' }] };
   },
@@ -1456,8 +1514,9 @@ const LEVELS = [
   controls: [
     { id: 'edge', label: 'Edge firewall (internet ↔ screened subnet)', type: 'toggle' },
     { id: 'inner', label: 'Inner firewall (screened subnet ↔ internal LAN)', type: 'toggle' },
-    { id: 'strict', label: 'Which firewall gets the stricter rules?', type: 'select', options: [['same', 'Both use the same rules'], ['edge', 'Edge firewall is stricter'], ['inner', 'Inner firewall is stricter']] },
-    { id: 'guestPol', label: 'Guest Wi-Fi policy', type: 'select', options: [['same', 'Same rules as the internal LAN'], ['internet', 'Lower security: internet access only, no access to the LAN']] }
+    { id: 'strict', label: 'Stricter rules tag', type: 'tag' },
+    { id: 'guestPol', label: 'Guest Wi-Fi policy', type: 'slot', group: 'gpol', tray: 'Guest policy labels', options: [['same', 'Same rules as LAN'], ['internet', 'Internet only']],
+      legend: 'Same rules as LAN: guests can reach staff systems. Internet only: lower security, guests can browse but can\'t reach the LAN.' }
   ],
   start: { zone: { book: 'lan', portal: 'dmz', mail: 'dmz', records: 'dmz', billing: 'lan', nurses: 'guest', visitors: 'lan' }, ctl: { edge: true, inner: false, strict: 'same', guestPol: 'same' } },
   diagram(cfg, mark) {
@@ -1466,10 +1525,10 @@ const LEVELS = [
       { z: 'internet', items: [{ name: 'Patients' }, { name: 'Attacker' }] },
       { z: 'dmz', lvl: 'Public-facing', items: itemsIn(this, cfg, 'dmz', mark) },
       { z: 'lan', lvl: 'Higher security', items: itemsIn(this, cfg, 'lan', mark) },
-      { z: 'guest', lvl: iso ? 'Lower security · internet only' : 'Same rules as LAN', items: itemsIn(this, cfg, 'guest', mark) }
+      { z: 'guest', lvl: iso ? 'Lower security · internet only' : 'Same rules as LAN', slot: 'guestPol', items: itemsIn(this, cfg, 'guest', mark) }
     ], walls: [
-      { on: c.edge, strict: c.edge && c.strict === 'edge', label: c.edge ? 'EDGE FIREWALL' + (c.strict === 'edge' ? ' · STRICT' : '') : 'NO FIREWALL' },
-      { on: c.inner, strict: c.inner && c.strict === 'inner', label: c.inner ? 'INNER FIREWALL' + (c.strict === 'inner' ? ' · STRICT' : '') : 'NO FIREWALL' },
+      { fw: 'edge', fwName: 'EDGE FIREWALL', on: c.edge, strict: c.edge && c.strict === 'edge', label: c.edge ? 'EDGE FIREWALL' + (c.strict === 'edge' ? ' · STRICT' : '') : 'NO FIREWALL' },
+      { fw: 'inner', fwName: 'INNER FIREWALL', on: c.inner, strict: c.inner && c.strict === 'inner', label: c.inner ? 'INNER FIREWALL' + (c.strict === 'inner' ? ' · STRICT' : '') : 'NO FIREWALL' },
       { on: iso, strict: iso, label: iso ? 'GUEST ISOLATION' : 'NO REAL BOUNDARY' }
     ] };
   },
@@ -1580,7 +1639,7 @@ function openLevel(i) {
   $('run-log').innerHTML = ''; $('run-verdict').innerHTML = '';
   $('q-why').innerHTML = ''; $('q-pass').innerHTML = ''; $('q-opts').innerHTML = '';
   $('hint-btn').disabled = false; $('hint-btn').textContent = 'Hint';
-  buildControls(); renderWatch(); setStep('watch');
+  renderWatch(); setStep('watch');
   window.scrollTo(0, 0); $('lv-title').focus();
 }
 $('back-map').addEventListener('click', () => {
@@ -1621,41 +1680,185 @@ $('watch-next').addEventListener('click', () => {
 });
 
 // ── Build ──
-function buildControls() {
-  const lv = LEVELS[S.cur], box = $('build-ctls');
-  let h = '';
-  if (lv.choices.length) lv.assets.forEach(a => {
-    h += '<div class="ctl"><label class="ctl-name" for="z-' + a.id + '">' + esc(a.name) + '</label>' +
-      '<select class="select" id="z-' + a.id + '" data-asset="' + a.id + '">' +
-      lv.choices.map(z => '<option value="' + z + '">' + esc(ZONE_NAME[z]) + '</option>').join('') + '</select></div>';
-  });
-  lv.controls.forEach(c => {
-    if (c.type === 'toggle') {
-      h += '<div class="ctl"><span class="ctl-name" id="lbl-' + c.id + '">' + esc(c.label) + '</span>' +
-        '<button type="button" class="toggle" id="c-' + c.id + '" data-ctl="' + c.id + '" aria-labelledby="lbl-' + c.id + ' c-' + c.id + '" aria-pressed="false"><span>Firewall</span></button></div>';
-    } else {
-      h += '<div class="ctl"><label class="ctl-name" for="c-' + c.id + '">' + esc(c.label) + '</label>' +
-        '<select class="select" id="c-' + c.id + '" data-ctl="' + c.id + '">' +
-        c.options.map(o => '<option value="' + o[0] + '">' + esc(o[1]) + '</option>').join('') + '</select></div>';
+// Every Build choice is a token the student drags onto the diagram.
+// Tap or Enter on a token selects it; then tap a "Place here" spot (keyboard and touch fallback).
+S.sel = null;
+const ctlOf = id => LEVELS[S.cur].controls.find(c => c.id === id);
+function tokenHTML(t, label, extra) {
+  const sel = S.sel && S.sel.key === t.key;
+  return '<button type="button" class="token' + (extra ? ' ' + extra : '') + '" data-key="' + esc(t.key) + '" data-kind="' + t.kind + '"' +
+    (t.id ? ' data-id="' + t.id + '"' : '') + (t.ctl ? ' data-ctl="' + t.ctl + '"' : '') + (t.val ? ' data-val="' + t.val + '"' : '') + (t.group ? ' data-group="' + t.group + '"' : '') +
+    ' aria-pressed="' + (sel ? 'true' : 'false') + '">' + esc(label) + '</button>';
+}
+function accepts(target, t) {
+  if (!t) return false;
+  if (target.drop === 'tray') return t.kind === 'fw' && !!t.ctl || t.kind === 'strict' && S.cfg.ctl.strict !== 'same';
+  if (target.drop === 'zone') return t.kind === 'asset' && S.cfg.zone[t.id] !== target.z;
+  if (target.drop === 'slot') return t.kind === 'opt' && t.group === target.group;
+  if (target.drop === 'wall') {
+    if (t.kind === 'fw') return !!target.fw && !S.cfg.ctl[target.fw];
+    if (t.kind === 'strict') return !!target.fw && S.cfg.ctl[target.fw] && S.cfg.ctl.strict !== target.fw;
+    if (t.kind === 'fwb') return !!target.pos && S.cfg.ctl.posB !== target.pos;
+  }
+  return false;
+}
+function placeHere(target) {
+  const tgt = target.drop === 'wall' ? '<button type="button" class="place-btn" data-place="wall" ' + (target.fw ? 'data-fw="' + target.fw + '"' : 'data-pos="' + target.pos + '"') + '>Place here</button>'
+    : '<button type="button" class="place-btn" data-place="' + target.drop + '"' + (target.z ? ' data-z="' + target.z + '"' : '') + '>Place here</button>';
+  return accepts(target, S.sel) ? tgt : '';
+}
+function renderBuildDiagram() {
+  const lv = LEVELS[S.cur], d = lv.diagram(S.cfg), c = S.cfg.ctl;
+  let h = '<div class="diagram build" role="group" aria-label="Network diagram you are building">';
+  d.cols.forEach((col, i) => {
+    if (i > 0) {
+      const w = d.walls[i - 1];
+      if (w.fw || w.pos) {
+        const target = { drop: 'wall', fw: w.fw, pos: w.pos };
+        h += '<div class="wall drop ' + (w.on ? 'on' : 'off') + (w.strict ? ' strict' : '') + '" data-drop="wall"' + (w.fw ? ' data-fw="' + w.fw + '"' : ' data-pos="' + w.pos + '"') + '>';
+        if (w.fixed) h += '<span class="wall-fixed">' + esc(w.fixed) + '</span>';
+        if (w.fw && c[w.fw]) {
+          h += tokenHTML({ key: 'fw-' + w.fw, kind: 'fw', ctl: w.fw }, w.fwName, 'tok-fw');
+          if (c.strict === w.fw) h += tokenHTML({ key: 'strict', kind: 'strict' }, 'STRICTER RULES', 'tok-strict');
+        } else if (w.pos && c.posB === w.pos) h += tokenHTML({ key: 'fwb', kind: 'fwb' }, 'FIREWALL B', 'tok-fw');
+        else if (!w.fixed) h += '<span class="wall-empty">NO FIREWALL</span>';
+        h += placeHere(target) + '</div>';
+      } else {
+        h += '<div class="wall ' + (w.on ? 'on' : 'off') + (w.strict ? ' strict' : '') + '">' + esc(w.label) + '</div>';
+      }
     }
+    const isZone = lv.choices.includes(col.z), name = col.label || ZONE_NAME[col.z];
+    h += '<div class="zone' + (col.z === 'internet' ? ' z-internet' : '') + (isZone ? ' drop' : '') + '"' + (isZone ? ' data-drop="zone" data-z="' + col.z + '"' : '') + ' role="group" aria-label="' + esc(name) + '">';
+    h += '<div class="zone-name" style="color:' + (ZONE_HUE[col.z] || 'var(--text-2)') + '">' + esc(name) + '</div>';
+    if (col.slot) {
+      const ct = ctlOf(col.slot), cur = ct.options.find(o => o[0] === c[col.slot]);
+      const tok = S.sel && accepts({ drop: 'slot', group: ct.group }, S.sel);
+      h += '<button type="button" class="slot' + (tok ? ' ready' : '') + '" data-drop="slot" data-ctl="' + col.slot + '" data-group="' + ct.group + '" aria-label="' + esc(ct.label) + ': ' + esc(cur ? cur[1] : 'empty') + (tok ? '. Place the selected label here.' : '. Drag a label here.') + '">' +
+        '<span class="slot-k">LABEL</span>' + esc(cur ? cur[1] : 'Drop a label') + '</button>';
+    } else if (col.lvl) h += '<div class="zone-lvl">' + esc(col.lvl) + '</div>';
+    col.items.forEach(it => {
+      if (it.id && isZone) h += tokenHTML({ key: 'a-' + it.id, kind: 'asset', id: it.id }, it.name, 'tok-asset');
+      else h += '<div class="chip">' + esc(it.name) + '</div>';
+    });
+    if (isZone && !col.items.length) h += '<div class="chip empty">(empty)</div>';
+    if (isZone) h += placeHere({ drop: 'zone', z: col.z });
+    h += '</div>';
   });
-  box.innerHTML = h;
-  box.querySelectorAll('select[data-asset]').forEach(s => s.addEventListener('change', () => { S.cfg.zone[s.dataset.asset] = s.value; refreshBuild(); }));
-  box.querySelectorAll('select[data-ctl]').forEach(s => s.addEventListener('change', () => { S.cfg.ctl[s.dataset.ctl] = s.value; refreshBuild(); }));
-  box.querySelectorAll('.toggle').forEach(t => t.addEventListener('click', () => { S.cfg.ctl[t.dataset.ctl] = !S.cfg.ctl[t.dataset.ctl]; refreshBuild(); }));
+  return h + '</div>';
 }
-function renderBuild() {
-  const box = $('build-ctls');
-  box.querySelectorAll('select[data-asset]').forEach(s => { s.value = S.cfg.zone[s.dataset.asset]; });
-  box.querySelectorAll('select[data-ctl]').forEach(s => { s.value = S.cfg.ctl[s.dataset.ctl]; });
-  refreshBuild();
+function renderTray() {
+  const lv = LEVELS[S.cur], c = S.cfg.ctl;
+  let h = '', groups = {};
+  const fwOff = lv.controls.filter(x => x.type === 'toggle' && !c[x.id]).length;
+  if (lv.controls.some(x => x.type === 'toggle')) {
+    h += '<div class="tray-sec"><span class="mono-label">Firewalls</span><div class="row">';
+    for (let k = 0; k < fwOff; k++) h += tokenHTML({ key: 'fw-tray-' + k, kind: 'fw' }, 'FIREWALL', 'tok-fw');
+    if (!fwOff) h += '<span class="muted tray-none">All firewalls placed.</span>';
+    h += '</div></div>';
+  }
+  if (lv.controls.some(x => x.type === 'tag')) {
+    h += '<div class="tray-sec"><span class="mono-label">Tags</span><div class="row">' +
+      (c.strict === 'same' ? tokenHTML({ key: 'strict', kind: 'strict' }, 'STRICTER RULES', 'tok-strict') : '<span class="muted tray-none">Tag placed. Drag it back here to remove it.</span>') + '</div></div>';
+  }
+  lv.controls.filter(x => x.type === 'slot').forEach(x => {
+    if (groups[x.group]) return; groups[x.group] = 1;
+    h += '<div class="tray-sec"><span class="mono-label">' + esc(x.tray || 'Labels') + '</span><div class="row">' +
+      x.options.map(o => tokenHTML({ key: 'opt-' + x.group + '-' + o[0], kind: 'opt', val: o[0], group: x.group }, o[1], 'tok-opt')).join('') + '</div>' +
+      (x.legend ? '<p class="tray-legend">' + esc(x.legend) + '</p>' : '') + '</div>';
+  });
+  if (lv.choices.length) h += '<div class="tray-sec"><span class="mono-label">Devices</span><p class="tray-legend">Drag each device into the zone where it belongs.</p></div>';
+  if (lv.controls.some(x => x.type === 'mover')) h += '<div class="tray-sec"><span class="mono-label">Firewall B</span><p class="tray-legend">Drag Firewall B into a different gap in the diagram.</p></div>';
+  const trayTarget = S.sel && accepts({ drop: 'tray' }, S.sel);
+  return '<div class="tray' + (trayTarget ? ' ready' : '') + '" data-drop="tray">' + h +
+    (trayTarget ? '<button type="button" class="place-btn" data-place="tray">Put it back in the tray</button>' : '') + '</div>';
 }
-function refreshBuild() {
-  const lv = LEVELS[S.cur];
-  $('build-ctls').querySelectorAll('.toggle').forEach(t => t.setAttribute('aria-pressed', S.cfg.ctl[t.dataset.ctl] ? 'true' : 'false'));
-  $('build-diagram').innerHTML = renderDiagram(lv.diagram(S.cfg));
+function tokenFrom(el) {
+  const d = el.dataset;
+  return { key: d.key, kind: d.kind, id: d.id, ctl: d.ctl, val: d.val, group: d.group };
 }
-$('reset-btn').addEventListener('click', () => { S.cfg = cloneCfg(LEVELS[S.cur]); renderBuild(); });
+function targetFrom(el) {
+  const d = el.dataset;
+  return { drop: d.drop || d.place, z: d.z, fw: d.fw, pos: d.pos, ctl: d.ctl, group: d.group };
+}
+function place(t, target) {
+  const c = S.cfg.ctl;
+  if (!accepts(target, t)) { buildMsg(t && target.drop ? 'That piece doesn\'t go there.' : ''); return false; }
+  let msg = '';
+  if (t.kind === 'asset') { S.cfg.zone[t.id] = target.z; msg = LEVELS[S.cur].assets.find(a => a.id === t.id).name + ' moved to ' + ZONE_NAME[target.z] + '.'; }
+  else if (t.kind === 'opt') { c[target.ctl] = t.val; msg = ctlOf(target.ctl).label + ' set.'; }
+  else if (t.kind === 'fwb') { c.posB = target.pos; msg = 'Firewall B moved.'; }
+  else if (t.kind === 'fw') {
+    if (t.ctl) { c[t.ctl] = false; if (c.strict === t.ctl) c.strict = 'same'; }
+    if (target.drop === 'wall') { c[target.fw] = true; msg = 'Firewall placed.'; } else msg = 'Firewall removed.';
+  } else if (t.kind === 'strict') {
+    c.strict = target.drop === 'wall' ? target.fw : 'same';
+    msg = target.drop === 'wall' ? 'Stricter rules tag placed.' : 'Stricter rules tag removed.';
+  }
+  S.sel = null; refreshBuild(t.key); buildMsg(msg); return true;
+}
+function buildMsg(m) { $('build-msg').textContent = m; }
+function renderBuild() { S.sel = null; refreshBuild(); buildMsg(''); }
+function refreshBuild(focusKey) {
+  $('build-diagram').innerHTML = renderBuildDiagram();
+  $('build-tray').innerHTML = renderTray();
+  document.body.classList.toggle('placing', !!S.sel);
+  if (focusKey) {
+    const el = document.querySelector('#step-build .token[data-key="' + focusKey + '"]');
+    if (el) el.focus({ preventScroll: true });
+  }
+}
+// click / tap / keyboard
+let dragJustEnded = false;
+$('step-build').addEventListener('click', e => {
+  if (dragJustEnded) { dragJustEnded = false; return; }
+  const tok = e.target.closest('.token'), pb = e.target.closest('.place-btn'), slot = e.target.closest('.slot');
+  if (pb && S.sel) { place(S.sel, targetFrom(pb)); return; }
+  if (slot && S.sel && S.sel.kind === 'opt') { place(S.sel, targetFrom(slot)); return; }
+  if (tok) {
+    const t = tokenFrom(tok);
+    if (S.sel && S.sel.key === t.key) { S.sel = null; buildMsg('Selection cleared.'); }
+    else { S.sel = t; buildMsg(tok.textContent + ' selected. Choose a "Place here" spot, or drag it.'); }
+    refreshBuild(t.key);
+  }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.sel) { S.sel = null; refreshBuild(); buildMsg('Selection cleared.'); } });
+// pointer drag (mouse, pen, touch)
+(function () {
+  let st = null;
+  const hl = el => { document.querySelectorAll('.drop-over').forEach(x => x.classList.remove('drop-over')); if (el) el.classList.add('drop-over'); };
+  const under = (x, y) => { const el = document.elementFromPoint(x, y); return el ? el.closest('[data-drop]') : null; };
+  $('step-build').addEventListener('pointerdown', e => {
+    const tok = e.target.closest('.token');
+    if (!tok || e.button > 0) return;
+    st = { tok, t: tokenFrom(tok), x: e.clientX, y: e.clientY, ghost: null, id: e.pointerId };
+  });
+  window.addEventListener('pointermove', e => {
+    if (!st || e.pointerId !== st.id) return;
+    if (!st.ghost) {
+      if (Math.hypot(e.clientX - st.x, e.clientY - st.y) < 6) return;
+      st.ghost = st.tok.cloneNode(true); st.ghost.classList.add('ghost'); st.ghost.removeAttribute('data-key');
+      document.body.appendChild(st.ghost); st.tok.classList.add('dragging'); document.body.classList.add('is-dragging');
+      S.sel = st.t; // lets accepts() highlight valid targets
+    }
+    st.ghost.style.left = e.clientX + 'px'; st.ghost.style.top = e.clientY + 'px';
+    const tgt = under(e.clientX, e.clientY);
+    hl(tgt && accepts(targetFrom(tgt), st.t) ? tgt : null);
+    e.preventDefault();
+  }, { passive: false });
+  window.addEventListener('pointerup', e => {
+    if (!st || e.pointerId !== st.id) return;
+    const s0 = st; st = null; hl(null);
+    if (!s0.ghost) return; // plain tap: the click handler selects it
+    s0.ghost.remove(); document.body.classList.remove('is-dragging'); dragJustEnded = true;
+    setTimeout(() => { dragJustEnded = false; }, 0);
+    const tgt = under(e.clientX, e.clientY);
+    S.sel = null;
+    if (tgt && place(s0.t, targetFrom(tgt))) return;
+    refreshBuild(); buildMsg(tgt ? 'That piece doesn\'t go there.' : '');
+  });
+  window.addEventListener('pointercancel', () => { if (st && st.ghost) { st.ghost.remove(); document.body.classList.remove('is-dragging'); } st = null; hl(null); });
+})();
+$('reset-btn').addEventListener('click', () => { S.cfg = cloneCfg(LEVELS[S.cur]); renderBuild(); buildMsg('Level reset to the starting setup.'); });
 $('hint-btn').addEventListener('click', () => {
   const lv = LEVELS[S.cur];
   if (S.hintI >= lv.hints.length) return;
